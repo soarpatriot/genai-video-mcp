@@ -48,7 +48,7 @@ Add this to your Claude Desktop config file:
   "mcpServers": {
     "genai-video": {
       "command": "node",
-      "args": ["/Users/I351771/source/genai-video-mcp/dist/index.js"],
+      "args": ["/Users/I351771/source/genai-video-mcp/src/index.js"],
       "env": {
         "VIDEO_API_BASE_URL": "http://localhost:3000",
         "VIDEO_API_BEARER_TOKEN": "your_bearer_token_here"
@@ -110,4 +110,4 @@ Make sure your bearer token:
 
 - See [README.md](README.md) for detailed usage
 - See [GITHUB_SETUP.md](GITHUB_SETUP.md) for advanced installation options
-- Customize the code in `src/index.ts` for your needs
+- Customize the code in `src/index.js` for your needs

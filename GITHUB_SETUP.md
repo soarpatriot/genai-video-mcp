@@ -60,10 +60,10 @@ Add to your Claude Desktop config (`~/Library/Application Support/Claude/claude_
       "command": "npx",
       "args": [
         "-y",
-        "github:YOUR_USERNAME/genai-video-mcp"
+        "https://github.com/soarpatriot/genai-video-mcp.git"
       ],
       "env": {
-        "VIDEO_API_BASE_URL": "http://localhost:3000",
+        "VIDEO_API_BASE_URL": "https://omxodqpbtigfonnmsmmj.supabase.co/functions/v1",
         "VIDEO_API_BEARER_TOKEN": "your_bearer_token_here"
       }
     }
@@ -92,9 +92,8 @@ cd ~/projects
 git clone https://github.com/YOUR_USERNAME/genai-video-mcp.git
 cd genai-video-mcp
 
-# Install dependencies and build
+# Install dependencies
 npm install
-npm run build
 ```
 
 2. **Add to Claude Desktop config:**
@@ -105,7 +104,7 @@ npm run build
     "genai-video": {
       "command": "node",
       "args": [
-        "/Users/YOUR_USERNAME/projects/genai-video-mcp/dist/index.js"
+        "/Users/YOUR_USERNAME/projects/genai-video-mcp/src/index.js"
       ],
       "env": {
         "VIDEO_API_BASE_URL": "http://localhost:3000",
@@ -123,7 +122,7 @@ npm run build
 
 **Cons:**
 - Takes up local disk space
-- Need to manually update (`git pull && npm install && npm run build`)
+- Need to manually update (`git pull && npm install`)
 
 ---
 
@@ -233,7 +232,6 @@ Updates happen automatically on next Claude Desktop restart.
 cd ~/projects/genai-video-mcp
 git pull
 npm install
-npm run build
 ```
 
 Then restart Claude Desktop.
@@ -282,7 +280,7 @@ For private repos, it's often easier to clone locally (Method 2) since you can a
 
 ### "Cannot find module" errors
 
-- Make sure `npm install` and `npm run build` completed successfully
+- Make sure `npm install` completed successfully
 - Check that the path in your config matches your actual installation location
 
 ### "Permission denied" errors

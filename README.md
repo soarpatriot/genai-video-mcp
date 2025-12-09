@@ -59,12 +59,6 @@ VIDEO_API_BASE_URL=http://localhost:3000
 VIDEO_API_BEARER_TOKEN=your_actual_bearer_token
 ```
 
-5. Build the project:
-
-```bash
-npm run build
-```
-
 **For detailed GitHub setup and installation options, see [GITHUB_SETUP.md](GITHUB_SETUP.md)**
 
 ## Usage
@@ -87,7 +81,7 @@ Add this configuration to your Claude Desktop config file:
   "mcpServers": {
     "genai-video": {
       "command": "node",
-      "args": ["/path/to/genai-video-mcp/dist/index.js"],
+      "args": ["/path/to/genai-video-mcp/src/index.js"],
       "env": {
         "VIDEO_API_BASE_URL": "http://localhost:3000",
         "VIDEO_API_BEARER_TOKEN": "your_bearer_token_here"
@@ -104,7 +98,7 @@ Or if you've installed it globally or want to use the package directly:
   "mcpServers": {
     "genai-video": {
       "command": "node",
-      "args": ["/absolute/path/to/genai-video-mcp/dist/index.js"],
+      "args": ["/absolute/path/to/genai-video-mcp/src/index.js"],
       "env": {
         "VIDEO_API_BASE_URL": "http://localhost:3000",
         "VIDEO_API_BEARER_TOKEN": "your_bearer_token_here"
@@ -174,23 +168,13 @@ The tool returns a JSON response with the following structure:
 
 ## Development
 
-### Watch Mode
-
-For development with auto-recompilation:
-
-```bash
-npm run watch
-```
-
 ### Project Structure
 
 ```
 genai-video-mcp/
 ├── src/
-│   └── index.ts          # Main MCP server implementation
-├── dist/                 # Compiled JavaScript (generated)
+│   └── index.js          # Main MCP server implementation
 ├── package.json
-├── tsconfig.json
 ├── .env.example
 ├── .gitignore
 └── README.md
