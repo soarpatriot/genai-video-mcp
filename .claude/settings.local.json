@@ -5,7 +5,9 @@
       "Bash(npm run build)",
       "Bash(git init:*)",
       "Bash(tree:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(npm install @supabase/supabase-js)",
+      "Bash(node test-download.js)"
     ],
     "deny": [],
     "ask": []

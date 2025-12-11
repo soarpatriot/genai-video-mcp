@@ -7,16 +7,34 @@ import {
     ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import dotenv from "dotenv";
+import { createClient } from "@supabase/supabase-js";
+import fs from "fs";
+import path from "path";
 
 // Load environment variables
 dotenv.config();
 
-const API_BASE_URL = process.env.VIDEO_API_BASE_URL || "http://localhost:3000";
-const BEARER_TOKEN = process.env.VIDEO_API_BEARER_TOKEN;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const SUPABASE_BEARER_TOKEN = process.env.SUPABASE_BEARER_TOKEN;
 
-if (!BEARER_TOKEN) {
-    console.error("Error: VIDEO_API_BEARER_TOKEN environment variable is required");
+if (!SUPABASE_BEARER_TOKEN) {
+    console.error("Error: SUPABASE_BEARER_TOKEN environment variable is required");
     process.exit(1);
+}
+
+if (!SUPABASE_URL) {
+    console.error("Error: SUPABASE_URL environment variable is required");
+    process.exit(1);
+}
+
+// Construct the API base URL from Supabase URL
+const API_BASE_URL = `${SUPABASE_URL}/functions/v1`;
+
+// Initialize Supabase client (only if credentials are provided)
+let supabase = null;
+if (SUPABASE_URL && SUPABASE_KEY) {
+    supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 }
 
 /**
@@ -41,7 +59,7 @@ async function generateVideo(prompt, model, config) {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${BEARER_TOKEN}`,
+            "Authorization": `Bearer ${SUPABASE_BEARER_TOKEN}`,
         },
         body: JSON.stringify(requestBody),
     });
@@ -54,6 +72,51 @@ async function generateVideo(prompt, model, config) {
     }
 
     return await response.json();
+}
+
+/**
+ * Download a file from Supabase storage
+ * @param {string} bucketName - The name of the Supabase storage bucket
+ * @param {string} filePath - The path to the file in the bucket
+ * @returns {Promise<Object>} The download response with file data
+ */
+async function downloadFile(bucketName, filePath) {
+    if (!supabase) {
+        throw new Error(
+            "Supabase is not configured. Please set SUPABASE_URL and SUPABASE_KEY environment variables."
+        );
+    }
+
+    const { data, error } = await supabase.storage
+        .from(bucketName)
+        .download(filePath);
+
+    if (error) {
+        throw new Error(`Failed to download file: ${error.message || JSON.stringify(error)}`);
+    }
+
+    // Convert blob to base64 for easy transmission
+    const buffer = await data.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString('base64');
+
+    // Save file to videos directory in current working directory
+    const videosDir = path.join(process.cwd(), 'videos');
+    if (!fs.existsSync(videosDir)) {
+        fs.mkdirSync(videosDir, { recursive: true });
+    }
+
+    const fileName = filePath.split('/').pop();
+    const localPath = path.join(videosDir, fileName);
+    fs.writeFileSync(localPath, Buffer.from(buffer));
+
+    return {
+        fileName: fileName,
+        filePath: filePath,
+        localPath: localPath,
+        size: data.size,
+        type: data.type,
+        data: base64
+    };
 }
 
 const server = new Server(
@@ -164,6 +227,25 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 required: ["prompt"],
             },
         },
+        {
+            name: "download_file",
+            description:
+                "Download a file from Supabase storage. Returns the file data as base64 encoded string along with metadata.",
+            inputSchema: {
+                type: "object",
+                properties: {
+                    bucketName: {
+                        type: "string",
+                        description: "The name of the Supabase storage bucket",
+                    },
+                    filePath: {
+                        type: "string",
+                        description: "The path to the file in the bucket (e.g., 'path/to/file.ext')",
+                    },
+                },
+                required: ["bucketName", "filePath"],
+            },
+        },
     ];
 
     return { tools };
@@ -270,6 +352,61 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                             {
                                 success: false,
                                 error: "Failed to generate video",
+                                message: error instanceof Error ? error.message : String(error),
+                            },
+                            null,
+                            2
+                        ),
+                    },
+                ],
+                isError: true,
+            };
+        }
+    }
+
+    if (request.params.name === "download_file") {
+        const args = request.params.arguments || {};
+
+        if (!args.bucketName) {
+            throw new Error("bucketName is required");
+        }
+
+        if (!args.filePath) {
+            throw new Error("filePath is required");
+        }
+
+        try {
+            const result = await downloadFile(args.bucketName, args.filePath);
+
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(
+                            {
+                                success: true,
+                                fileName: result.fileName,
+                                filePath: result.filePath,
+                                localPath: result.localPath,
+                                size: result.size,
+                                type: result.type,
+                                data: result.data,
+                            },
+                            null,
+                            2
+                        ),
+                    },
+                ],
+            };
+        } catch (error) {
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(
+                            {
+                                success: false,
+                                error: "Failed to download file",
                                 message: error instanceof Error ? error.message : String(error),
                             },
                             null,
