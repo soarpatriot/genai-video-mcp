@@ -1,20 +1,25 @@
 # GenAI Video MCP Server
 
-An MCP (Model Context Protocol) server that provides video generation capabilities through an AI-powered video generation API.
+MCP server that provides AI-powered video generation capabilities through integration with video generation APIs.
 
 ## Features
 
-- Generate videos from text prompts
-- Support for custom AI models
-- Configurable aspect ratios (16:9, 9:16, 1:1, etc.)
-- Negative prompt support to avoid unwanted elements
-- Asynchronous video generation with automatic polling
+- Text-to-video generation with customizable prompts
+- Image-to-video animation
+- Video extension and interpolation
+- Reference image support for style/content guidance
+- Configurable aspect ratios (16:9, 9:16) and resolutions (720p, 1080p)
+- Automatic polling for asynchronous video generation
+- File download from Supabase storage
 
-## Quick Start
+## Installation
 
-### Install from GitHub (Recommended)
+### Option 1: NPX (Recommended)
 
-Using npx (no installation required):
+Add to your Claude Desktop config:
+
+**MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+**Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
 
 ```json
 {
@@ -32,69 +37,18 @@ Using npx (no installation required):
 }
 ```
 
-### Install Locally
-
-1. Clone this repository:
+### Option 2: Local Installation
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/genai-video-mcp.git
 cd genai-video-mcp
-```
-
-2. Install dependencies:
-
-```bash
 npm install
-```
-
-3. Create a `.env` file based on `.env.example`:
-
-```bash
 cp .env.example .env
-```
-
-4. Configure your environment variables in `.env`:
-
-```env
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_KEY=your_supabase_anon_key
-SUPABASE_BEARER_TOKEN=your_actual_bearer_token
-```
-
-**For detailed GitHub setup and installation options, see [GITHUB_SETUP.md](GITHUB_SETUP.md)**
-
-## Usage
-
-### Running the Server
-
-```bash
+# Edit .env with your credentials
 npm start
 ```
 
-### Configuration with Claude Desktop
-
-Add this configuration to your Claude Desktop config file:
-
-**MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-**Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
-
-```json
-{
-  "mcpServers": {
-    "genai-video": {
-      "command": "node",
-      "args": ["/path/to/genai-video-mcp/src/index.js"],
-      "env": {
-        "SUPABASE_URL": "https://your-project.supabase.co",
-        "SUPABASE_KEY": "your_supabase_anon_key",
-        "SUPABASE_BEARER_TOKEN": "your_bearer_token_here"
-      }
-    }
-  }
-}
-```
-
-Or if you've installed it globally or want to use the package directly:
+Claude Desktop config for local installation:
 
 ```json
 {
@@ -112,162 +66,122 @@ Or if you've installed it globally or want to use the package directly:
 }
 ```
 
-## Available Tools
+
+## MCP Server Tools
+
+This server exposes two tools through the Model Context Protocol:
 
 ### generate_video
 
-Generate a video using AI based on a text prompt. Supports text-to-video, image-to-video, video interpolation, video extension, and reference images for style/content guidance.
+An asynchronous video generation tool that sends requests to the AI video API and polls for completion. The server makes a POST request to `{SUPABASE_URL}/functions/v1/ai-service/videos` with the provided parameters.
 
-**Parameters:**
+**How it works:**
+1. Constructs a request with the prompt, model, and configuration parameters
+2. Sends authenticated request using the bearer token
+3. Returns the video URL, storage path, and operation metadata on success
+4. Handles errors and provides detailed error messages
 
-- `prompt` (required, string): The text description of the video you want to generate
-- `model` (optional, string): The AI model to use (default: "veo-3.1-generate-preview")
-- `aspectRatio` (optional, string): The aspect ratio of the generated video. Options: "16:9" (default, 720p & 1080p), "9:16" (720p & 1080p)
-- `negativePrompt` (optional, string): Things you want to avoid in the generated video
-- `resolution` (optional, string): The resolution of the generated video. Options: "720p" (default), "1080p" (only supports 8s duration)
-- `durationSeconds` (optional, number): Length of the generated video in seconds. Options: 4, 5, 6, or 8. Must be 8 when using extension/interpolation or referenceImages (16:9 only)
-- `personGeneration` (optional, string): Controls the generation of people. Options: "allow_all", "allow_adult", "dont_allow"
-- `image` (optional, object): An initial image to animate (Image-to-video). Provide either imageBytes (base64) or gcsUri
-  - `imageBytes` (string): Base64 encoded image data
-  - `gcsUri` (string): GCS URI for the image (gs://...)
-  - `mimeType` (string): MIME type of the image (e.g., image/png)
-- `lastFrame` (optional, object): The final image for an interpolation video. Must be used with the image parameter
-  - `imageBytes` (string): Base64 encoded image data
-  - `gcsUri` (string): GCS URI for the image (gs://...)
-  - `mimeType` (string): MIME type of the image
-- `referenceImages` (optional, array): Up to three images to be used as style and content references (Veo 3.1 only)
-  - Each item contains:
-    - `image` (object): Image data with imageBytes/gcsUri and mimeType
-    - `referenceType` (string): Reference type (style or content)
-- `video` (optional, object): Video to be used for video extension. Provide either videoBytes (base64) or gcsUri
-  - `videoBytes` (string): Base64 encoded video data
-  - `gcsUri` (string): GCS URI for the video (gs://...)
-  - `mimeType` (string): MIME type of the video (e.g., video/mp4)
+**Core Parameters:**
 
-**Example Usage:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `prompt` | string | *required* | Text description of the video |
+| `model` | string | `veo-3.1-generate-preview` | AI model to use |
+| `aspectRatio` | string | `16:9` | Options: `16:9`, `9:16` |
+| `resolution` | string | `720p` | Options: `720p`, `1080p` (1080p requires 8s duration) |
+| `durationSeconds` | number | - | Options: 4, 5, 6, 8 (8 required for extension/interpolation) |
+| `negativePrompt` | string | - | Elements to avoid in generation |
+| `personGeneration` | string | - | `allow_all` (text-to-video), `allow_adult` (image-to-video), `dont_allow` |
 
-Basic generation:
-```
-Generate a video: A cinematic shot of a majestic lion in the savannah.
-```
+**Generation Modes:**
 
-With configuration:
-```
-Generate a video with 16:9 aspect ratio: A serene beach at sunset with waves crashing, avoid people and buildings.
-```
+| Mode | Parameters | Description |
+|------|------------|-------------|
+| Text-to-video | `prompt` only | Generate video from text description |
+| Image-to-video | `image` + `prompt` | Animate a static image (requires `imageBytes`/`gcsUri` + `mimeType`) |
+| Video interpolation | `image` + `lastFrame` + `prompt` | Create transition between two images |
+| Video extension | `video` + `prompt` | Extend an existing video (requires `videoBytes`/`gcsUri` + `mimeType`) |
+| Reference-guided | `referenceImages` + `prompt` | Use up to 3 reference images for style/content (Veo 3.1 only) |
 
-With custom model:
-```
-Generate a video using model veo-3.1-generate-preview: A futuristic cityscape with flying cars.
-```
-
-### download_file
-
-Download a file from Supabase storage. Returns the file data as base64 encoded string along with metadata. The file is automatically saved to a `videos` directory in the current working directory.
-
-**Parameters:**
-
-- `bucketName` (required, string): The name of the Supabase storage bucket
-- `filePath` (required, string): The path to the file in the bucket (e.g., 'path/to/file.ext')
-
-**Returns:**
-
-- `success` (boolean): Whether the download was successful
-- `fileName` (string): Name of the downloaded file
-- `filePath` (string): Original path in the bucket
-- `localPath` (string): Local path where the file was saved
-- `size` (number): Size of the file
-- `type` (string): MIME type of the file
-- `data` (string): Base64 encoded file data
-
-**Example Usage:**
-
-```
-Download the video file from bucket 'videos' at path 'generated/video.mp4'
-```
-
-## API Response
-
-The tool returns a JSON response with the following structure:
-
-**Success Response:**
+**Response Format:**
 ```json
 {
   "success": true,
-  "videoUrl": "https://your-storage-url.com/videos/generated_video.mp4",
-  "storagePath": "videos/generated_video.mp4",
-  "prompt": "Your original prompt",
+  "videoUrl": "https://storage-url/video.mp4",
+  "storagePath": "path/in/storage.mp4",
+  "prompt": "original prompt",
   "operation": {
-    "name": "operation-name",
+    "name": "operation-id",
     "done": true,
     "metadata": {}
   }
 }
 ```
 
-**Error Response:**
+**Example:**
+```
+Generate a 16:9 video: A cinematic shot of a majestic lion in the savannah, avoid people and buildings
+```
+
+### download_file
+
+Downloads files from Supabase storage buckets and automatically saves them to a local `videos` directory.
+
+**How it works:**
+1. Connects to Supabase using the configured URL and API key
+2. Downloads the file as a blob from the specified bucket and path
+3. Converts the blob to a base64 string for transmission
+4. Creates a `videos` directory in the current working directory if it doesn't exist
+5. Saves the file locally with its original filename
+6. Returns metadata including the local path and base64 data
+
+**Parameters:**
+- `bucketName` (required): Supabase storage bucket name
+- `filePath` (required): Full path to file in bucket (e.g., `videos/output.mp4`)
+
+**Response Format:**
 ```json
 {
-  "success": false,
-  "error": "Error message",
-  "message": "Detailed error description"
+  "success": true,
+  "fileName": "output.mp4",
+  "filePath": "videos/output.mp4",
+  "localPath": "/absolute/path/to/videos/output.mp4",
+  "size": 1234567,
+  "type": "video/mp4",
+  "data": "base64encodedstring..."
 }
 ```
 
-## Development
-
-### Project Structure
-
+**Example:**
 ```
-genai-video-mcp/
-├── src/
-│   └── index.js          # Main MCP server implementation
-├── package.json
-├── .env.example
-├── .gitignore
-└── README.md
+Download file from bucket 'my-videos' at path 'generated/video.mp4'
 ```
 
-## Environment Variables
+## Configuration
 
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `SUPABASE_URL` | Base URL of your Supabase project (e.g., https://your-project.supabase.co) | Yes | - |
-| `SUPABASE_KEY` | Supabase anon/public key (required for download_file tool) | No* | - |
-| `SUPABASE_BEARER_TOKEN` | Bearer token for API authentication (used for video generation) | Yes | - |
+### Environment Variables
 
-\* `SUPABASE_KEY` is only required if you want to use the `download_file` tool to download files from Supabase storage. The `generate_video` tool only requires `SUPABASE_URL` and `SUPABASE_BEARER_TOKEN`.
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `SUPABASE_URL` | Yes | Supabase project URL (e.g., `https://your-project.supabase.co`) |
+| `SUPABASE_BEARER_TOKEN` | Yes | Bearer token for video generation API |
+| `SUPABASE_KEY` | No* | Anon/public key (only required for `download_file` tool) |
 
-## Notes
+*The `generate_video` tool only requires `SUPABASE_URL` and `SUPABASE_BEARER_TOKEN`.
 
-- Video generation is an asynchronous process that may take several minutes
-- The API automatically polls for completion status
-- Generated videos are stored and accessible via the returned URL
-- Make sure your bearer token has proper permissions for the video generation API
+### Important Notes
+
+- Video generation is asynchronous and may take several minutes
+- The server automatically polls for completion status
+- Ensure your bearer token has proper permissions for the video generation API
 
 ## Troubleshooting
 
-### "SUPABASE_BEARER_TOKEN environment variable is required"
-
-Make sure you've set the bearer token in your `.env` file or in the Claude Desktop configuration.
-
-### "SUPABASE_URL environment variable is required"
-
-Make sure you've set the Supabase URL in your `.env` file or in the Claude Desktop configuration.
-
-### Connection refused
-
-Verify that:
-1. The `SUPABASE_URL` is correct and includes the full URL (e.g., https://your-project.supabase.co)
-2. The Supabase project is accessible
-3. Your network allows connections to the Supabase endpoint
-
-### Authentication errors
-
-Check that:
-1. Your bearer token is valid and not expired
-2. The token is correctly formatted in the Authorization header
-3. The token has the necessary permissions for video generation
+| Issue | Solution |
+|-------|----------|
+| Missing environment variables | Set `SUPABASE_URL`, `SUPABASE_BEARER_TOKEN` (and `SUPABASE_KEY` for downloads) in `.env` or Claude Desktop config |
+| Connection refused | Verify `SUPABASE_URL` is correct and Supabase project is accessible |
+| Authentication errors | Check bearer token validity, format, and permissions |
 
 ## License
 

@@ -122,7 +122,7 @@ async function downloadFile(bucketName, filePath) {
 const server = new Server(
     {
         name: "genai-video-mcp",
-        version: "1.0.0",
+        version: "1.0.4",
     },
     {
         capabilities: {
